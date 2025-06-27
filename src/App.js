@@ -1,7 +1,8 @@
 import React, { useState, useRef } from 'react';
 import { Download, Upload, Play, AlertCircle, CheckCircle, Clock, FileText } from 'lucide-react';
+import './App.css';
 
-const SushiBulkUtility = () => {
+function App() {
   const [customerIds, setCustomerIds] = useState('');
   const [beginDate, setBeginDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -15,7 +16,7 @@ const SushiBulkUtility = () => {
   const fileInputRef = useRef(null);
 
   // Your Supabase project URL - update this after setup
-  const SUPABASE_FUNCTION_URL = 'https://iclccafrqecuptfgamad.supabase.co/functions/v1/sushi-proxy';
+  const SUPABASE_FUNCTION_URL = 'https://YOUR_PROJECT_REF.supabase.co/functions/v1/sushi-proxy';
 
   const reportTypes = [
     { value: 'tr_j1', label: 'TR_J1 - Journal Requests' },
@@ -438,6 +439,6 @@ const SushiBulkUtility = () => {
       </div>
     </div>
   );
-};
+}
 
-export default SushiBulkUtility;
+export default App;

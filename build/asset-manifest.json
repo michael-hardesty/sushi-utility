@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/SUSHI-utility/static/css/main.f855e6bc.css",
+    "main.js": "/SUSHI-utility/static/js/main.cd836f1e.js",
+    "static/js/453.1fb5d7cc.chunk.js": "/SUSHI-utility/static/js/453.1fb5d7cc.chunk.js",
+    "index.html": "/SUSHI-utility/index.html",
+    "main.f855e6bc.css.map": "/SUSHI-utility/static/css/main.f855e6bc.css.map",
+    "main.cd836f1e.js.map": "/SUSHI-utility/static/js/main.cd836f1e.js.map",
+    "453.1fb5d7cc.chunk.js.map": "/SUSHI-utility/static/js/453.1fb5d7cc.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.f855e6bc.css",
+    "static/js/main.cd836f1e.js"
+  ]
+}
