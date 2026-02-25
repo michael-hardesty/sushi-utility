@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>SUSHI Data Harvester</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #1C75BC 10%, #999999 90%);
+      min-height: 100vh;
+      margin: 0;
+      padding: 40px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    .container {
+      background: white;
+      border-radius: 16px;
+      padding: 40px;
+      max-width: 700px;
+      width: 100%;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #333;
+    }
+    p.subhead {
+        text-align: center;
+        margin-bottom: 20px;
+        color: #666;
+        font-weight: 400;
+        font-style: italic;
+    }
+    p.help {
+        color: #777;
+        font-weight: 400;
+        font-size: 12px;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+      font-weight: 600;
+      color: #444;
+    }
+    .date-container {
+      display: flex;
+      gap: 15px;
+      margin-top: 15px;
+    }
+    .date-field {
+      flex: 1;
+    }
+    .date-field label {
+      margin-top: 0;
+    }
+    select, input[type="date"], textarea, button {
+      width: 100%;
+      margin-top: 8px;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: whitesmoke;
+      color: #1C75BC;
+      font-weight: bold;
+      margin-top: 20px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    button:hover:not(:disabled) {
+      background-color: #1C75BC;
+      color: whitesmoke;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    #results {
+      margin-top: 30px;
+      padding: 20px;
+      border-radius: 8px;
+      background: #f0fdf4;
+      border: 1px solid #34d399;
+    }
+    #results h3 {
+      margin-top: 0;
+    }
+    #results a {
+      display: inline-block;
+      margin-top: 10px;
+      text-decoration: none;
+      background: #10b981;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 6px;
+    }
+    #results a:hover {
+      background: #059669;
+    }
+    pre {
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    
+    /* Progress indicator styles */
+    #progressContainer {
+      margin-top: 20px;
+      padding: 20px;
+      border-radius: 8px;
+      background: #f8f9fa;
+      border: 1px solid #e9ecef;
+      display: none;
+    }
+    
+    .progress-bar-wrapper {
+      margin: 15px 0;
+    }
+    
+    .progress-bar-bg {
+      width: 100%;
+      height: 24px;
+      background-color: #e9ecef;
+      border-radius: 12px;
+      overflow: hidden;
+      position: relative;
+    }
+    
+    .progress-bar-fill {
+      height: 100%;
+      background-color: #1C75BC;
+      transition: width 0.3s ease;
+      border-radius: 12px;
+      position: relative;
+    }
+    
+    .progress-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      color: white;
+      font-weight: 600;
+      font-size: 14px;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+      z-index: 10;
+      width: 100%;
+      text-align: center;
+    }
+    
+    .progress-details {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #666;
+    }
+    
+    .progress-details div {
+      margin: 5px 0;
+    }
+    
+    .current-account {
+      font-family: monospace;
+      background: #e9ecef;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    
+    .stats {
+      display: flex;
+      gap: 20px;
+      margin-top: 10px;
+    }
+    
+    .stat {
+      flex: 1;
+      text-align: center;
+      padding: 10px;
+      background: white;
+      border-radius: 6px;
+      border: 1px solid #e9ecef;
+    }
+    
+    .stat-value {
+      font-size: 24px;
+      font-weight: bold;
+      color: #1C75BC;
+    }
+    
+    .stat-label {
+      font-size: 12px;
+      color: #666;
+      margin-top: 4px;
+    }
+    
+    .success { color: #10b981; }
+    .error { color: #ef4444; }
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 15px;
+      cursor: pointer;
+    }
+    .checkbox-label input[type="checkbox"] {
+      width: auto;
+      margin: 0;
+      cursor: pointer;
+    }
+  </style>
+  <script defer>
+    document.addEventListener('DOMContentLoaded', () => {
+      const WORKER_URL = 'https://sushi-harvester.mhardesty.workers.dev';
+      const form = document.getElementById('harvestForm');
+      const resultsContent = document.getElementById('resultsContent');
+      const resultsDiv = document.getElementById('results');
+      const progressContainer = document.getElementById('progressContainer');
+      const progressBar = document.getElementById('progressBar');
+      const progressText = document.getElementById('progressText');
+      const currentAccount = document.getElementById('currentAccount');
+      const etaText = document.getElementById('eta');
+      const successCount = document.getElementById('successCount');
+      const failedCount = document.getElementById('failedCount');
+      const submitButton = document.getElementById('submitButton');
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        resultsDiv.style.display = 'none';
+        progressContainer.style.display = 'block';
+        submitButton.disabled = true;
+        
+        // Reset progress
+        progressBar.style.width = '0%';
+        progressText.textContent = '0%';
+        currentAccount.textContent = 'Starting...';
+        etaText.textContent = 'Calculating...';
+        successCount.textContent = '0';
+        failedCount.textContent = '0';
+
+        try {
+          const accountsText = document.getElementById('accounts').value.trim();
+          const [begin, end] = [document.getElementById('beginDate').value, document.getElementById('endDate').value];
+          const format = document.getElementById('format').value;
+          const reportType = document.getElementById('reportType').value;
+          const formattedOutput = document.getElementById('formattedOutput').checked;
+
+          const accounts = accountsText.split('\n').map(line => {
+            const [requestor_id, customer_id] = line.split(',').map(v => v.trim());
+            return { requestor_id, customer_id };
+          }).filter(a => a.requestor_id && a.customer_id);
+
+          const payload = { accounts, begin_date: begin, end_date: end, format, report_type: reportType, formatted: formattedOutput };
+
+          // Use EventSource for SSE
+          const response = await fetch(`${WORKER_URL}/harvest-stream`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+
+          if (!response.ok) {
+            throw new Error(`Server error: ${response.status}`);
+          }
+
+          const reader = response.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop(); // Keep incomplete line in buffer
+
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.slice(6));
+                  
+                  if (data.type === 'progress') {
+                    // Update progress UI
+                    progressBar.style.width = `${data.percentage}%`;
+                    progressText.textContent = `${data.percentage}%`;
+                    currentAccount.textContent = `Processing: ${data.currentAccount} (${data.current} of ${data.total})`;
+                    etaText.textContent = `ETA: ${data.estimatedTimeRemaining}`;
+                    successCount.textContent = data.successful;
+                    failedCount.textContent = data.failed;
+                  } else if (data.type === 'complete') {
+                    // Process complete
+                    progressContainer.style.display = 'none';
+                    resultsDiv.style.display = 'block';
+                    
+                    const blob = new Blob([data.csv], { type: 'text/csv' });
+                    const url = URL.createObjectURL(blob);
+                    const filename = data.filename || `harvest_${new Date().toISOString().split('T')[0]}`;
+
+                    resultsContent.innerHTML = `
+                      <h3>Harvest Complete!</h3>
+                      <p>Processed ${data.successful} out of ${data.total} accounts</p>
+                      <p><strong>Usage:</strong> ${data.summary.totalUsage.toLocaleString()}</p>
+                      <p><strong>Platforms:</strong> ${data.summary.uniquePlatforms}</p>
+                      <p><strong>Metric Types:</strong> ${data.summary.metricTypes.join(', ')}</p>
+                      <a href="${url}" download="${filename}.csv">Download CSV</a>
+                    `;
+                  } else if (data.error) {
+                    throw new Error(data.error);
+                  }
+                } catch (parseError) {
+                  console.error('Error parsing SSE data:', parseError);
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Error:", err);
+          progressContainer.style.display = 'none';
+          resultsDiv.style.display = 'block';
+          resultsContent.innerHTML = `<h3>Error</h3><pre>${err.message}</pre>`;
+        } finally {
+          submitButton.disabled = false;
+        }
+      });
+    });
+  </script>
+</head>
+<body>
+  <div class="container">
+    <h1>PNAS Bulk COUNTER Data Harvester</h1>
+    <p class="subhead">For the Subscriptions team to gather subscriber COUNTER usage data in bulk.</p>
+    <form id="harvestForm">
+      <label>COUNTER Version <select id="format"><option value="5">5</option><option value="5.1">5.1</option></select></label>
+      <label>Report Type <select id="reportType">
+        <option value="tr_j1">TR_J1</option><option value="tr_j2">TR_J2</option><option value="tr_j3">TR_J3</option><option value="tr_j4">TR_J4</option>
+      </select></label>
+      <label class="checkbox-label"><input type="checkbox" id="formattedOutput" /> Formatted Output (Pivot Table Style)</label>
+      <div class="date-container">
+        <div class="date-field">
+            <label>Begin Date <input type="date" id="beginDate" required /></label>
+        </div>
+        <div class="date-field">
+            <label>End Date <input type="date" id="endDate" required /></label>
+        </div>
+      </div>
+      <label>Accounts<br/><p class="help">Add the admin's email address and PNAS ID in a comma-separated list below. Add a new row for each account.</p><textarea id="accounts" rows="5" placeholder="email address,PNAS ID"></textarea></label>
+      <button type="submit" id="submitButton">Submit</button>
+    </form>
+    
+    <!-- Progress indicator -->
+    <div id="progressContainer">
+      <h3>Processing Accounts...</h3>
+      <div class="progress-bar-wrapper">
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill" id="progressBar">
+            <div class="progress-text" id="progressText">0%</div>
+          </div>
+        </div>
+      </div>
+      <div class="progress-details">
+        <div id="currentAccount" class="current-account">Starting...</div>
+        <div id="eta">Calculating...</div>
+      </div>
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-value success" id="successCount">0</div>
+          <div class="stat-label">Successful</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value error" id="failedCount">0</div>
+          <div class="stat-label">Failed</div>
+        </div>
+      </div>
+    </div>
+    
+    <div id="results" style="display:none;"><div id="resultsContent"></div></div>
+  </div>
+</body>
+</html>
