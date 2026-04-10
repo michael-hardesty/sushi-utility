@@ -230,10 +230,12 @@ function processApiResponse(jsonData, requestData, account) {
   // Get all month columns for the query period
   const monthColumns = getMonthColumns(requestData.begin_date, requestData.end_date)
   
-  // Determine if this is version 5.1 format by checking structure
-  const isVersion51 = requestData.format === '5.1' || 
-    (reportItems.length > 0 && reportItems[0].Attribute_Performance)
-  
+  // Determine if this is version 5.1 format by checking the actual response structure.
+  // The user's format selection controls which endpoint URL is called, but parsing must
+  // be driven by what the response actually contains — some endpoints (e.g. IR) may not
+  // support 5.1 and will return a v5 response even when the 5.1 URL is used.
+  const isVersion51 = reportItems.length > 0 && !!reportItems[0].Attribute_Performance
+
   console.log(`Version detection: format=${requestData.format}, isVersion51=${isVersion51}, hasAttributePerformance=${reportItems.length > 0 && !!reportItems[0].Attribute_Performance}`)
   
   if (reportItems && reportItems.length > 0) {
@@ -458,7 +460,7 @@ function extractItemData(item) {
   }
   
   return {
-    title: item.Title || '',
+    title: item.Title || item.Item || '',
     publisher: item.Publisher || '',
     publisher_id,
     platform: item.Platform || '',
@@ -834,42 +836,49 @@ function formatAsPivot(data, requestData) {
 
 function convertToCSV(data, requestData) {
   if (!data.length) return ''
-  
-  // Define the base columns in the correct order
-  const baseColumns = [
-    'Institution_Name', 'Institution_ID', 'Title', 'Publisher', 'Publisher_ID', 'Platform', 'DOI', 
-    'Proprietary_ID', 'Print_ISSN', 'Online_ISSN', 'URI'
-  ]
-  
+
+  const reportType = requestData.report_type.toLowerCase()
+  const isIR = reportType === 'ir'
+
+  // IR uses "Item" as the title column header; TR reports use "Title"
+  // Print_ISSN/Online_ISSN are journal-level identifiers and are omitted for IR
+  const baseColumns = isIR
+    ? ['Institution_Name', 'Institution_ID', 'Item', 'Publisher', 'Publisher_ID', 'Platform', 'DOI', 'Proprietary_ID', 'URI']
+    : ['Institution_Name', 'Institution_ID', 'Title', 'Publisher', 'Publisher_ID', 'Platform', 'DOI', 'Proprietary_ID', 'Print_ISSN', 'Online_ISSN', 'URI']
+
   // Add YOP column for TR_J4 reports (before Access_Type)
-  if (requestData.report_type.toLowerCase() === 'tr_j4') {
+  if (reportType === 'tr_j4') {
     baseColumns.push('YOP')
   }
-  
+
   // Add Access_Type column only for TR_J3 reports
-  if (requestData.report_type.toLowerCase() === 'tr_j3') {
+  if (reportType === 'tr_j3') {
     baseColumns.push('Access_Type')
   }
-  
+
   // Add Metric_Type and Reporting_Period_Total
   baseColumns.push('Metric_Type', 'Reporting_Period_Total')
-  
+
   // Get month columns for the query period directly
   const monthColumns = getMonthColumns(requestData.begin_date, requestData.end_date)
-  
+
   // Combine all columns
   const headers = [...baseColumns, ...monthColumns]
-  
+
+  // For IR, "Item" header maps to the internal "Title" field
+  const headerToField = isIR ? { 'Item': 'Title' } : {}
+
   // Create CSV
   const csvRows = [headers.map(h => `"${h}"`).join(',')]
-  
+
   for (const row of data) {
     const values = headers.map(h => {
-      const v = row[h]
+      const field = headerToField[h] || h
+      const v = row[field]
       return (v === null || v === undefined) ? '""' : `"${String(v).replace(/"/g, '""')}"`
     })
     csvRows.push(values.join(','))
   }
-  
+
   return csvRows.join('\n')
 }
